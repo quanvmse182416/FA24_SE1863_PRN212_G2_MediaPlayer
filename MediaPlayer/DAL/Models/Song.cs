@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable disable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,10 +15,8 @@ public class Song
     public string Artist { get; set; }
     public string Album { get; set; }
 
-    public Song(string title, string filePath)
+    public Song()
     {
-        Title = title;
-        FilePath = filePath;
     }
 
     public override string ToString()
