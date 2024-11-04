@@ -5,7 +5,7 @@ VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaPlayer.GUI", "GUI\MediaPlayer.GUI.csproj", "{A63001D8-D149-4E67-9CF3-F1586391AD0C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaPLayer.BLL", "Player\MediaPLayer.BLL.csproj", "{E9DBF951-4C65-410A-A4BC-63D55DB2A1A5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaPlayer.BLL", "Player\MediaPlayer.BLL.csproj", "{E9DBF951-4C65-410A-A4BC-63D55DB2A1A5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaPlayer.DAL", "DAL\MediaPlayer.DAL.csproj", "{E65F86F2-E6D4-45E9-8560-B1D839184907}"
 EndProject
