@@ -4,17 +4,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using System.Text.Json;
 namespace MediaPlayer.DAL.Repositories
 {
     public class FileRepository
     {
-        internal void CopyFile( string SourceDir, string fileName)
+        internal string CopyFile( string SourceDir, string fileName, bool overwrite = false)
         {
             string destDirectory = System.IO.Directory.GetCurrentDirectory() + @"\data\";
             if (Directory.Exists(destDirectory) == false)
                 Directory.CreateDirectory(destDirectory);
-            File.Copy(SourceDir, destDirectory + fileName);
+            string fileDest = destDirectory + fileName;
+            if( File.Exists( fileDest ) && !overwrite)
+                return "File exist";
+            File.Copy(SourceDir, destDirectory + fileName, overwrite);
+            return "Ok";
+        }
+
+        public void WriteFile(Object obj, string file)
+        {
+            string jsonString = JsonSerializer.Serialize(obj);
+            File.WriteAllText(file, jsonString);
+        }
+
+        public string ReadFile(string file)
+        {
+            if (File.Exists(file) == false)
+                return null;
+            return File.ReadAllText(file);
         }
         public Song GetInfo(string filePath)
         {

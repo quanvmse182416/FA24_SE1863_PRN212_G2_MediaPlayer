@@ -11,9 +11,9 @@ namespace MediaPlayer.DAL.Repositories;
 
 public class SongRepository : FileRepository
 {
-    public void CopySong(string sourceDir, string fileName)
+    public string CopySong(string sourceDir, string fileName, bool overwrite = false)
     {
-        base.CopyFile(sourceDir, fileName);
+        return base.CopyFile(sourceDir, fileName, overwrite);
     }
     private Song GetSongInfo(string filePath)
     {

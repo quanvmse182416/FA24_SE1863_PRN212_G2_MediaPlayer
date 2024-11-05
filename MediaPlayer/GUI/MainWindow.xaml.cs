@@ -14,6 +14,7 @@ using System.Windows.Threading;
 using MediaPlayer;
 using System.Diagnostics;
 using MediaPlayer.DAL.Models;
+using MediaPlayer.BLL;
 namespace MediaPlayer.GUI
 {
     /// <summary>
@@ -38,7 +39,8 @@ namespace MediaPlayer.GUI
 
             // Initialize playlists
             _mediaLogic = new();
-            playlistsListBox.SelectedItem = _mediaLogic.Playlists;
+            _mediaLogic.Load();
+            playlistsListBox.ItemsSource = _mediaLogic.Playlists;
 
             // Initialize timer for progress updates
             _timer = new DispatcherTimer();
@@ -66,7 +68,10 @@ namespace MediaPlayer.GUI
 
         private void MediaPlayer_MediaEnded(object sender, EventArgs e)
         {
-            PlayNextSong();
+            //PlayNextSong();
+            string result = _mediaLogic.NextSong();
+            if( result == "Ok" )
+                PlayCurrentSong();
         }
 
         private void btnAddSong_Click(object sender, RoutedEventArgs e)
@@ -83,19 +88,31 @@ namespace MediaPlayer.GUI
                 Filter = "MP3 files (*.mp3)|*.mp3",
                 Multiselect = true
             };
-            if (openFileDialog.ShowDialog() == true)
+            if (openFileDialog.ShowDialog() == false)
+                return;
+            
+            BLL.MediaPlayer temp = _mediaLogic.ShallowCopy();
+            foreach (string filename in openFileDialog.FileNames)
             {
-                foreach (string filename in openFileDialog.FileNames)
+                string result = _mediaLogic.addSong(filename, currentPlaylistIndex);
+                if( result.Contains("File exist"))
                 {
-                    _mediaLogic.addSong(filename, currentPlaylistIndex);
+                    MessageBoxResult button = MessageBox.Show("Do you want to overwrite " + filename, "Song conflict", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+                    if (button == MessageBoxResult.OK)
+                        _mediaLogic.addSong(filename, currentPlaylistIndex, true);
+                    else
+                    {
+                        _mediaLogic = temp;
+                        return;
+                    }
                 }
-                playlistsListBox.ItemsSource = _mediaLogic.Playlists;
             }
+            playlistsListBox.ItemsSource = _mediaLogic.Playlists;
         }
 
         private void btnNewPlaylist_Click(object sender, RoutedEventArgs e)
         {
-            string playlistName = Microsoft.VisualBasic.Interaction.InputBox("Enter playlist name:", "New Playlist", "");
+            string playlistName = Microsoft.VisualBasic.Interaction.InputBox("Enter playlist name:", "New Playlist", @"");
             if (string.IsNullOrEmpty(playlistName))
             {
                 MessageBox.Show("Playlist name cannot be empty", "Empty name!!!", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -108,185 +125,122 @@ namespace MediaPlayer.GUI
 
         private void songsListBox_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            PlaySelectedSong();
+            //PlaySelectedSong();
         }
 
-        private void PlaySelectedSong()
+        private void prepareSong()
         {
-            if (songsListBox.SelectedItem != null)
-            {
-                var selectedSong = (Song)songsListBox.SelectedItem;
+            var selectedSong = _mediaLogic.CurrentSong;
+            _mediaLogic.IsPlaying = false;
+            _mediaPlayer.Open(new Uri(selectedSong.FilePath));
+            btnPlayPause.Content = "▶";
 
-                _mediaPlayer.Open(new Uri(selectedSong.FilePath));
-                _mediaPlayer.Play();
-                _mediaLogic.IsPlaying = true;
-                btnPlayPause.Content = "⏸";
+            // Update song details display
+            songTitleTxt.Text = selectedSong.Title;
+            songArtistTxt.Text = selectedSong.Artist;
+            songAlbumTxt.Text = selectedSong.Album;
 
-                // Update song details display
-                songTitleTxt.Text = selectedSong.Title;
-                songArtistTxt.Text = selectedSong.Artist;
-                songAlbumTxt.Text = selectedSong.Album;
-
-                currentTimeTxt.Text = @"00\:00\:00";
-                totalTimeTxt.Text = selectedSong.Duration;
-                _timer.Start();
-            }
+            currentTimeTxt.Text = @"00:00:00";
+            totalTimeTxt.Text = selectedSong.Duration;
         }
 
         private void btnPlayPause_Click(object sender, RoutedEventArgs e)
         {
-            //if( )
-
-            //if (isPlaying)
-            //{
-            //    _mediaPlayer.Pause();
-            //    btnPlayPause.Content = "▶";
-            //    _timer.Stop();
-            //}
-            //else
-            //{
-            //    _mediaPlayer.Play();
-            //    btnPlayPause.Content = "⏸";
-            //    _timer.Start();
-            //}
-            //isPlaying = !isPlaying;
+            string result;
+            Playlist currentSelected = (Playlist)playlistsListBox.SelectedItem;
+            if ( _mediaLogic.CurrentSong == null && currentSelected == null)
+            {
+                result = _mediaLogic.DefaultPlay();
+                if (result != "Ok")
+                {
+                    MessageBox.Show(result, "Error!", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                prepareSong();
+            }
+            else if (_mediaLogic.CurrentSong == null && currentSelected != null)
+            {
+                if (currentSelected.Songs.Count == 0)
+                {
+                    MessageBox.Show("PLaylist is empty", "Empty playlist", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                _mediaLogic.CurrentSong = currentSelected.Songs[0];
+                prepareSong();
+            }
+            
+            _mediaLogic.TogglePlay();
+            if (_mediaLogic.IsPlaying == false)
+            {
+                _mediaPlayer.Pause();
+                btnPlayPause.Content = "▶";
+                _timer.Stop();
+            } else
+            {
+                _mediaPlayer.Play();
+                btnPlayPause.Content = "⏸";
+                _timer.Start();
+            }
         }
 
         private void btnPrevious_Click(object sender, RoutedEventArgs e)
         {
-            //if (songsListBox.Items.Count == 0) return;
-
-            //if (isShuffleEnabled)
-            //{
-            //    if (currentShuffleIndex <= 0)
-            //    {
-            //        if (isLoopEnabled)
-            //        {
-            //            // Go to the end of the current shuffle history
-            //            currentShuffleIndex = shuffleHistory.Count - 1;
-            //        }
-            //        else return;
-            //    }
-            //    else
-            //    {
-            //        currentShuffleIndex--;
-            //    }
-            //    songsListBox.SelectedIndex = shuffleHistory[currentShuffleIndex];
-            //}
-            //else
-            //{
-            //    if (songsListBox.SelectedIndex > 0)
-            //    {
-            //        songsListBox.SelectedIndex--;
-            //    }
-            //    else if (isLoopEnabled)
-            //    {
-            //        songsListBox.SelectedIndex = songsListBox.Items.Count - 1;
-            //    }
-            //    else return;
-            //}
-
-            //PlaySelectedSong();
+            string result = _mediaLogic.PrevSong( true );
+            if( result == "Ok" )
+                PlayCurrentSong();
         }
 
         private void btnNext_Click(object sender, RoutedEventArgs e)
         {
-            //PlayNextSong();
-        }
-
-        private void PlayNextSong()
-        {
-            //if (songsListBox.Items.Count == 0) return;
-
-            //if (isShuffleEnabled)
-            //{
-            //    if (shuffleHistory.Count == 0 || currentShuffleIndex >= shuffleHistory.Count - 1)
-            //    {
-            //        // Generate new shuffle history if we're at the end or don't have one
-            //        shuffleHistory.Clear();
-            //        for (int i = 0; i < songsListBox.Items.Count; i++)
-            //        {
-            //            shuffleHistory.Add(i);
-            //        }
-            //        // Shuffle the list
-            //        for (int i = shuffleHistory.Count - 1; i > 0; i--)
-            //        {
-            //            int j = random.Next(i + 1);
-            //            int temp = shuffleHistory[i];
-            //            shuffleHistory[i] = shuffleHistory[j];
-            //            shuffleHistory[j] = temp;
-            //        }
-
-            //        // If loop is enabled, start from beginning of new shuffle
-            //        if (isLoopEnabled)
-            //        {
-            //            currentShuffleIndex = 0;
-            //        }
-            //        else
-            //        {
-            //            return; // Don't play if we're at the end and loop is disabled
-            //        }
-            //    }
-            //    else
-            //    {
-            //        currentShuffleIndex++;
-            //    }
-
-            //    songsListBox.SelectedIndex = shuffleHistory[currentShuffleIndex];
-            //}
-            //else
-            //{
-            //    if (songsListBox.SelectedIndex < songsListBox.Items.Count - 1)
-            //    {
-            //        songsListBox.SelectedIndex++;
-            //    }
-            //    else if (isLoopEnabled)
-            //    {
-            //        songsListBox.SelectedIndex = 0;
-            //    }
-            //    else return;
-            //}
-
-            //PlaySelectedSong();
+            string result = _mediaLogic.NextSong( true );
+            if( result == "Ok" )
+                PlayCurrentSong();
         }
 
         private void volumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            //if (_mediaPlayer != null)
-            //{
-            //    _mediaPlayer.Volume = volumeSlider.Value;
-            //}
+            if (_mediaPlayer != null)
+            {
+                _mediaPlayer.Volume = volumeSlider.Value;
+            }
         }
 
         private void progressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            //if (_mediaPlayer.Source != null && _mediaPlayer.NaturalDuration.HasTimeSpan && progressSlider.IsMouseCaptureWithin)
-            //{
-            //    TimeSpan newPosition = TimeSpan.FromSeconds((progressSlider.Value / 100) * _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds);
-            //    _mediaPlayer.Position = newPosition;
-            //    currentTimeTxt.Text = newPosition.ToString(@"mm\:ss");
-            //}
+            if (_mediaPlayer.Source != null && _mediaPlayer.NaturalDuration.HasTimeSpan && progressSlider.IsMouseCaptureWithin)
+            {
+                TimeSpan newPosition = TimeSpan.FromSeconds((progressSlider.Value / 100) * _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds);
+                _mediaPlayer.Position = newPosition;
+                currentTimeTxt.Text = newPosition.ToString(@"hh\:mm\:ss");
+            }
         }
 
         private void progressSlider_DragStarted(object sender, System.Windows.Controls.Primitives.DragStartedEventArgs e)
         {
-            //_timer.Stop(); // Pause updates while dragging
+            _timer.Stop(); // Pause updates while dragging
         }
 
         private void progressSlider_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
         {
-            //if (_mediaPlayer.Source != null && _mediaPlayer.NaturalDuration.HasTimeSpan)
-            //{
-            //    TimeSpan newPosition = TimeSpan.FromSeconds((progressSlider.Value / 100) * _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds);
-            //    _mediaPlayer.Position = newPosition;
-            //    currentTimeTxt.Text = newPosition.ToString(@"mm\:ss");
-            //}
-            //_timer.Start(); // Resume updates
+            if (_mediaPlayer.Source != null && _mediaPlayer.NaturalDuration.HasTimeSpan)
+            {
+                TimeSpan newPosition = TimeSpan.FromSeconds((progressSlider.Value / 100) * _mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds);
+                _mediaPlayer.Position = newPosition;
+                currentTimeTxt.Text = newPosition.ToString(@"mm\:ss");
+            }
+            _timer.Start(); // Resume updates
         }
 
         private void btnShuffle_Click(object sender, RoutedEventArgs e)
         {
             //isShuffleEnabled = !isShuffleEnabled;
+            int selected = playlistsListBox.SelectedIndex;
+            if (selected < 0)
+                return;
+
+            _mediaLogic.ToggleShuffle(selected);
+            Color enabled = new Color() { R = 29, B = 84, G = 185, A = 255 };
+            btnShuffle.Foreground = _mediaLogic.IsShuffleEnabled ? new SolidColorBrush(enabled) : new SolidColorBrush(Colors.White);
             //btnShuffle.Background = isShuffleEnabled ? new SolidColorBrush(Colors.LightBlue) : new SolidColorBrush(Colors.Transparent);
 
             //if (isShuffleEnabled)
@@ -317,8 +271,45 @@ namespace MediaPlayer.GUI
 
         private void btnLoop_Click(object sender, RoutedEventArgs e)
         {
-            //isLoopEnabled = !isLoopEnabled;
-            //btnLoop.Background = isLoopEnabled ? new SolidColorBrush(Colors.LightBlue) : new SolidColorBrush(Colors.Transparent);
+            //btnLoop.Background = isLoopEnabled ? new SolidColorBrush(Colors.LightBlue) : new SolidColorBrush(Colors.Transparent); 🔂
+            if (_mediaLogic.IsRepeatAllEnabled)
+            {
+                _mediaLogic.ToggleRepeat();
+                btnLoop.Content = "🔁";
+            }
+            else if (_mediaLogic.IsRepeatSingleEnabled)
+            {
+                _mediaLogic.ToggleAllRepeat();
+                btnLoop.Content = "🔁";
+            }
+            else
+            {
+                _mediaLogic.ToggleSingleRepeat();
+                btnLoop.Content = "🔂";
+            }
+            Color enabled = new Color() { R = 29, B = 84, G = 185, A = 255 };
+            btnLoop.Foreground = _mediaLogic.IsRepeatEnabled() ? new SolidColorBrush(enabled) : new SolidColorBrush(Colors.White);
+        }
+
+        private void PlayCurrentSong()
+        {
+            if (_mediaLogic.CurrentSong == null)
+                return;
+
+            _mediaPlayer.Open(new Uri(_mediaLogic.CurrentSong.FilePath));
+            _mediaPlayer.Play();
+            _mediaLogic.IsPlaying = true;
+            btnPlayPause.Content = "⏸";
+
+            // Update song details display
+            songTitleTxt.Text = _mediaLogic.CurrentSong.Title;
+            songArtistTxt.Text = _mediaLogic.CurrentSong.Artist;
+            songAlbumTxt.Text = _mediaLogic.CurrentSong.Album;
+
+            currentTimeTxt.Text = "00:00";
+            totalTimeTxt.Text = _mediaLogic.CurrentSong.Duration;
+            _timer.Start();
+            
         }
     }
 }

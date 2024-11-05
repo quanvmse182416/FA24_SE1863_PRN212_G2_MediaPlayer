@@ -149,7 +149,7 @@
                                                     <TextBlock Text="{Binding Name}" 
                                            FontWeight="Bold" 
                                            FontSize="16"/>
-                                                    <ItemsControl ItemsSource="{Binding Songs}">
+                                                    <ItemsControl x:Name="SongsItemControl" ItemsSource="{Binding Songs}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
                                                                 <StackPanel Orientation="Horizontal" Margin="0,2">
